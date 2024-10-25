@@ -1,29 +1,38 @@
 const diceButton = document.getElementById('dice-button');
-diceButton.addEventListener('click', debounce(fetchAdvice, 500)); // Debounce with 500ms delay
+let adviceCache = {};
 
+diceButton.addEventListener('click', debounce(fetchAdvice, 200)); 
 async function fetchAdvice() {
-    const timeout = 5000; // 5 seconds timeout
-    diceButton.disabled = true; // Disable button during fetch
+    showLoading(); 
+
+    const randomId = Math.floor(Math.random() * 200); 
+    // Check if advice with this ID is already cached
+    if (adviceCache[randomId]) {
+        displayAdvice(adviceCache[randomId]);
+        return;
+    }
 
     try {
-        const response = await Promise.race([
-            fetch('https://api.adviceslip.com/advice'),
-            new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Request timed out')), timeout)
-            )
-        ]);
-
+        const response = await fetch(`https://api.adviceslip.com/advice/${randomId}`);
         if (!response.ok) throw new Error('Network response was not ok');
-        
+
         const data = await response.json();
-        document.getElementById('advice-id').textContent = data.slip.id;
-        document.getElementById('advice-text').textContent = `"${data.slip.advice}"`;
+        adviceCache[randomId] = data.slip.advice; // Cache the fetched advice
+        displayAdvice(data.slip.advice);
     } catch (error) {
-        console.error('Failed to fetch advice:', error);
+        console.error("Failed to fetch advice:", error);
         document.getElementById('advice-text').textContent = "Sorry, we couldn't get advice right now. Please try again later.";
     } finally {
         diceButton.disabled = false; // Re-enable button after fetch completes
     }
+}
+
+function displayAdvice(advice) {
+    document.getElementById("advice-text").textContent = advice;
+}
+
+function showLoading() {
+    document.getElementById("advice-text").textContent = "Loading...";
 }
 
 function debounce(func, delay) {
